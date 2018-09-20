@@ -21,6 +21,8 @@ class node:
 
 def makeDecisionTree(examples, method):
     root = node()
+    
+    #count number of positive and negative in the entire set
     try:
         numPositive = ((examples.groupby('Class').size())[1])
     except:
@@ -29,6 +31,8 @@ def makeDecisionTree(examples, method):
         numNegative = ((examples.groupby('Class').size())[0])
     except:
         numNegative = 0
+        
+    #the root is a leaf if all examples are negative or positive, or if number of attribtues is 0 
     root.leaf=True
     #all examples are negative
     if numPositive == 0:
@@ -46,7 +50,8 @@ def makeDecisionTree(examples, method):
         else:
             root.label=0
             return root
-    root.leaf=False
+    #no conditions apply, so node is not a leaf
+    root.leaf = False
     
     #find best attribute
     A = None
@@ -58,23 +63,52 @@ def makeDecisionTree(examples, method):
     #For each possible value subsets Vi of A, only 0 or 1 because binary
     vi1 = examples[(examples[A]==1)]
     vi0 = examples[(examples[A]==0)]
+    if root.name=="XD":
+        print("vi0")
+        print(vi0)
+        print("vi1")
+        print(vi1)
     #if either subsets are empty
     if vi1.shape[0]==0:
         #count most common occurrence of Class
-        vi1positive = ((vi1.groupby('Class').size())[1])
-        vi1negative = ((vi1.groupby('Class').size())[0])
+        try:
+            vi1positive = ((vi1.groupby('Class').size())[1])
+        except:
+            vi1positive = 0
+        try:
+            vi1negative = ((vi1.groupby('Class').size())[0])
+        except:
+            vi1negative = 0
         if vi1positive > vi1negative:
             root.left = node(True, None, None, None, 1)
+            examplesvi1 = vi1.copy(deep=True)
+            examplesvi1 = examplesvi1.drop([A], axis=1)
+            root.right = makeDecisionTree(examplesvi1, method)
         else:
             root.left = node(True, None, None, None, 0)
+            examplesvi1 = vi1.copy(deep=True)
+            examplesvi1 = examplesvi1.drop([A], axis=1)
+            root.right = makeDecisionTree(examplesvi1, method)
     elif vi0.shape[0]==0:
         #count most common occurrence of Class
-        vi0positive = ((vi0.groupby('Class').size())[1])
-        vi0negative = ((vi0.groupby('Class').size())[0])
+        try:
+            vi0positive = ((vi0.groupby('Class').size())[1])
+        except:
+            vi0positive = 0
+        try:
+            vi0negative = ((vi0.groupby('Class').size())[0])
+        except:
+            vi0negative = 0
         if vi0positive > vi0negative:
             root.right = node(True, None, None, None, 1)
+            examplesvi0 = vi0.copy(deep=True)
+            examplesvi0 = examplesvi0.drop([A], axis=1)
+            root.left = makeDecisionTree(examplesvi0, method)
         else:
-            root.right= node(True, None, None, None, 0)
+            root.right = node(True, None, None, None, 0)
+            examplesvi0 = vi0.copy(deep=True)
+            examplesvi0 = examplesvi0.drop([A], axis=1)
+            root.left = makeDecisionTree(examplesvi0, method)
     else:
         examplesvi0 = vi0.copy(deep=True)
         examplesvi1 = vi1.copy(deep=True)
@@ -96,7 +130,7 @@ def findAttributeByInformationGain(examples):
     
     #store best attribute
     bestAttribute = None
-    bestInformationGain = 0.0
+    bestInformationGain = -0.1
     for column in examples.columns:
         #iterate over all attributes but class
         if(column != "Class"):
@@ -109,31 +143,34 @@ def findAttributeByInformationGain(examples):
             except:
                 numNegative = 0
             total = numPositive + numNegative
+            
             #subsets of the attribute that have 1 and 0 to calculate subset entropy
             df1 = examples[(examples[column]==1)]
             df0 = examples[(examples[column]==0)]
             try:
                 positive1 = ((df1.groupby('Class').size())[1])
             except:
-                #no 1s
+                #no positive examples in the 1 subclass
                 positive1 = 0
             try:
                 negative1 = ((df1.groupby('Class').size())[0])
             except:
-                #no 0s
+                #no negative examples in the 1 subclass
                 negative1 = 0
             try:
-                #no 1s
+                #no positive examples in the 0 subclass
                 positive0 = ((df0.groupby('Class').size())[1])
             except:
-                #no 0s
                 positive0 = 0
             try:
+                #no negative examples in the 0 subclass
                 negative0 = ((df0.groupby('Class').size())[0])
             except:
                 negative0 = 0
-            informationGain = 0.0
+                
+            #calculate entropy
             informationGain = entropyS - ((numPositive/total)*calculateEntropy(positive1, negative1)) - ((numNegative/total)*calculateEntropy(positive0, negative0))      
+            #set the attribute to the best information gain
             if informationGain > bestInformationGain:
                 bestInformationGain = informationGain
                 bestAttribute = column
@@ -158,17 +195,17 @@ def printTree(root, level):
         for i in range(level):
             spaces += "| "
         if root.leaf == True:
-            toprint = ": " + str(root.label)
+            toprint = str(root.label)
             print(toprint, end=" ")
             level = level-1
         else:
             print("")
-            toprint = spaces + str(root.name) + " = 0:"
+            toprint = spaces + str(root.name) + " = 0 :"
             print(toprint, end=" ")
         printTree(root.left, level+1)
         if root.leaf == False:
             print("")
-            toprint = spaces + str(root.name) + " = 1:"
+            toprint = spaces + str(root.name) + " = 1 :"
             print(toprint, end=" ")
         printTree(root.right, level+1)
     
@@ -182,7 +219,7 @@ if __name__ == "__main__":
     test = sys.argv[5]
     to_print = sys.argv[6]
     '''
-    training_data = pandas.read_csv('training_set.csv')
+    training_data = pandas.read_csv('training_set2.csv')
     training_attributes = list(training_data)
     training_values = training_data.values
     root = makeDecisionTree(training_data, "ig")
