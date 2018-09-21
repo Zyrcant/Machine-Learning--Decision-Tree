@@ -2,30 +2,44 @@
 import pandas
 from math import log
 import sys
-import time
-
-class node: 
-    def __init__(self, leaf=False, right=None, left=None, name=None, label=None):
-        #if the node is a leaf node
-        self.leaf = leaf;
-        
-        #left and right nodes
-        self.right = right;
-        self.left = left;
-        
-        #name of the attribute
-        self.name = name;
-        
-        #label of the attribute (0 or 1)
-        self.label = label;
+import copy
+import random
 
 '''
-calculate best attribute by information gain
-Args: dataset
+Class for node
+@param leaf - Whether or not the node is a leaf node
+@param right - Right child of node
+@param left - Left child of node
+@param name - Attribute name of node
+@param label - If the node is 1 or 0 (for leaf nodes)
+'''
+class node: 
+    def __init__(self, leaf=False, right=None, left=None, name=None, label=None, data=None):
+        #if the node is a leaf node
+        self.leaf = leaf
+        
+        #left and right nodes
+        self.right = right
+        self.left = left
+        
+        #name of the attribute
+        self.name = name
+        
+        #label of the attribute (0 or 1)
+        self.label = label
+        
+        #data subset at this node
+        self.data = data
+
+'''
+Generates a decision tree
+@param examples - Dataset to be used
+@param method - Method by information gain or variance impurity 
 Output: attribute name that has the best information gain
 '''
 def makeDecisionTree(examples, method):
     root = node()
+    root.data = examples
     
     #count number of positive and negative in the entire set
     try:
@@ -80,9 +94,9 @@ def makeDecisionTree(examples, method):
         except:
             vi0negative = 0
         if vi0positive > vi0negative:
-            root.left= node(True, None, None, None, 1)
+            root.left= node(True, None, None, None, 1, examples)
         else:
-            root.left= node(True, None, None, None, 0)
+            root.left= node(True, None, None, None, 0, examples)
     else:
         examplesvi0 = vi0.copy(deep=True)
         examplesvi0 = examplesvi0.drop([A], axis=1)
@@ -99,9 +113,9 @@ def makeDecisionTree(examples, method):
         except:
             vi1negative = 0
         if vi1positive > vi1negative:
-            root.right= node(True, None, None, None, 1)
+            root.right= node(True, None, None, None, 1, examples)
         else:
-            root.right = node(True, None, None, None, 0)
+            root.right = node(True, None, None, None, 0, examples)
     else:
         examplesvi1 = vi1.copy(deep=True)
         examplesvi1 = examplesvi1.drop([A], axis=1)
@@ -109,8 +123,8 @@ def makeDecisionTree(examples, method):
     return root
     
 '''
-calculate best attribute by information gain
-Args: dataset
+Calculate best attribute by information gain
+@param examples - Dataset to calculate information gain
 Output: attribute name that has the best information gain
 '''
 def findAttributeByInformationGain(examples):
@@ -176,7 +190,8 @@ def findAttributeByInformationGain(examples):
     
 '''
 function to calculate the entropy
-Args: number of positive and negative examples
+@param numPositive - Number of positive examples
+@param numNegative - Number of negative examples
 Output: entropy as a float
 '''
 def calculateEntropy(numPositive, numNegative):
@@ -190,7 +205,7 @@ def calculateEntropy(numPositive, numNegative):
 
 '''
 function to calculate best attribute by variance impurity
-Args: number of positive and negative examples
+@param examples - Dataset to calculate best attribute
 Output: best attribute name
 '''
 def findAttributeByVariance(examples):
@@ -256,7 +271,8 @@ def findAttributeByVariance(examples):
     
 '''
 function to calculate the variance impurity
-Args: number of positive and negative examples
+@param numPositive - number of positive examples
+@param numNegative - number of negative examples
 Output: variance impurity as a float
 '''
 def calculateVarianceImpurity(numPositive, numNegative):
@@ -269,8 +285,9 @@ def calculateVarianceImpurity(numPositive, numNegative):
 
 '''
 function to print the tree in preorder
-Args: root to start the print, level of the tree
-Output: Prints the decision tree
+@param root: node to begin printing at
+@param level:level of the tree (height it is currently at)
+@return: Prints the decision tree from the node in preorder
 '''
 def printTree(root, level):
     if root:
@@ -291,8 +308,88 @@ def printTree(root, level):
             toprint = spaces + str(root.name) + " = 1 :"
             print(toprint, end=" ")
         printTree(root.right, level+1)
-    
 
+'''
+greedy function to prune a tree for best accuracy
+@param l: given value for pruning
+@param k: given value for pruning
+@param tree: node of decision tree
+@validation: validation set to prune with
+@return: a pruned tree 
+'''
+def postpruning(l, k, tree, validation):
+    bestTree = tree
+    bestAcc = calculateAccuracy(bestTree, validation)
+    for i in range(1, l):
+        print("Best tree's accuracy is: " + str(bestAcc))
+        treeD = copy.deepcopy(tree)
+        m = random.randint(1, k)
+        for j in range(1, m):
+            treeList = makeTreeList(treeD)
+            n = len(treeList)
+            p = random.randint(1, n)
+            pruneNode = treeList[p-1]
+            left = findMajority(pruneNode.left)
+            right = findMajority(pruneNode.right)
+            pruneNode.left = node(True, None, None, None, left, None)
+            pruneNode.right = node(True, None, None, None, right, None)
+        treeDAcc = calculateAccuracy(treeD, validation)
+        if treeDAcc > bestAcc:
+            print("NEW TREE")
+            bestTree = treeD
+            bestAcc = treeDAcc
+    return bestTree
+
+def findMajority(node):
+    if node.leaf == True:
+        return node.label
+    else:
+        try:
+            positive = (node.left.data.groupby('Class').size())[1]
+        except:
+            positive = 0
+        try: 
+            negative = (node.right.data.groupby('Class').size())[0]
+        except:
+            negative = 0
+    if positive >= negative:
+        return 0
+    else:
+        return 1
+
+def makeTreeList(tree):
+    #don't count leaves
+    if(tree.leaf):
+        return[]
+    return [tree] + makeTreeList(tree.left) + makeTreeList(tree.right)
+
+'''
+function to calculate accuracy of tree given a dataset
+@param tree: node that the decision tree begins at
+@param dataset: Dataset to be classified
+@return: Percentage of accurate classifications of dataset
+'''
+def calculateAccuracy(tree, dataset):
+    total = dataset.shape[0]
+    #number of correctly classified instances
+    correct = 0
+    rootNode = copy.deepcopy(tree)
+    for index, row in dataset.iterrows():
+        while tree.leaf == False:
+            attribute = tree.name
+            if row[attribute] == 0:
+                tree = tree.left
+            else:
+                tree = tree.right
+        #tree is now leaf
+        if tree.label == 1 and row['Class']==1:
+            correct = correct + 1
+        elif tree.label == 0 and row['Class']==0:
+            correct = correct + 1
+        #go back to root
+        tree = rootNode
+    return (correct/total)
+    
 if __name__ == "__main__": 
     '''
     L = sys.argv[1];
@@ -305,5 +402,7 @@ if __name__ == "__main__":
     training_data = pandas.read_csv('training_set2.csv')
     training_attributes = list(training_data)
     training_values = training_data.values
-    root = makeDecisionTree(training_data, "vi")
-    printTree(root, 0)
+    
+    validation_data = pandas.read_csv('validation_set2.csv')
+    root = makeDecisionTree(training_data, "ig")
+    postpruning(100, 150, root, validation_data)
