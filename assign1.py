@@ -321,7 +321,6 @@ def postpruning(l, k, tree, validation):
     bestTree = tree
     bestAcc = calculateAccuracy(bestTree, validation)
     for i in range(1, l):
-        print("Best tree's accuracy is: " + str(bestAcc))
         treeD = copy.deepcopy(tree)
         m = random.randint(1, k)
         for j in range(1, m):
@@ -335,11 +334,19 @@ def postpruning(l, k, tree, validation):
             pruneNode.right = node(True, None, None, None, right, None)
         treeDAcc = calculateAccuracy(treeD, validation)
         if treeDAcc > bestAcc:
-            print("NEW TREE")
+            print("NEW TREE" + str(treeDAcc))
             bestTree = treeD
             bestAcc = treeDAcc
     return bestTree
 
+'''
+greedy function to prune a tree for best accuracy
+@param l: given value for pruning
+@param k: given value for pruning
+@param tree: node of decision tree
+@validation: validation set to prune with
+@return: a pruned tree 
+'''
 def findMajority(node):
     if node.leaf == True:
         return node.label
@@ -357,6 +364,11 @@ def findMajority(node):
     else:
         return 1
 
+'''
+Makes a list out of a tree in preorder
+@param tree: the tree to make a list out of
+@return: A LIST, MADE OUT OF A TREE
+'''
 def makeTreeList(tree):
     #don't count leaves
     if(tree.leaf):
@@ -400,9 +412,9 @@ if __name__ == "__main__":
     to_print = sys.argv[6]
     '''
     training_data = pandas.read_csv('training_set2.csv')
-    training_attributes = list(training_data)
-    training_values = training_data.values
-    
     validation_data = pandas.read_csv('validation_set2.csv')
+    test_data = pandas.read_csv('test_set2.csv')
     root = makeDecisionTree(training_data, "ig")
-    postpruning(100, 150, root, validation_data)
+    print("prepruning: " + str(calculateAccuracy(root, test_data)))
+    newroot = postpruning(90, 10, root, validation_data)
+    print("postpruning: " + str(calculateAccuracy(newroot, test_data)))
