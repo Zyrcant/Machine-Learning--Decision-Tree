@@ -19,6 +19,11 @@ class node:
         #label of the attribute (0 or 1)
         self.label = label;
 
+'''
+calculate best attribute by information gain
+Args: dataset
+Output: attribute name that has the best information gain
+'''
 def makeDecisionTree(examples, method):
     root = node()
     
@@ -63,69 +68,62 @@ def makeDecisionTree(examples, method):
     #For each possible value subsets Vi of A, only 0 or 1 because binary
     vi1 = examples[(examples[A]==1)]
     vi0 = examples[(examples[A]==0)]
-    if root.name=="XD":
-        print("vi0")
-        print(vi0)
-        print("vi1")
-        print(vi1)
     #if either subsets are empty
-    if vi1.shape[0]==0:
+    if vi0.shape[0]==0:
         #count most common occurrence of Class
         try:
-            vi1positive = ((vi1.groupby('Class').size())[1])
-        except:
-            vi1positive = 0
-        try:
-            vi1negative = ((vi1.groupby('Class').size())[0])
-        except:
-            vi1negative = 0
-        if vi1positive > vi1negative:
-            root.left = node(True, None, None, None, 1)
-            examplesvi1 = vi1.copy(deep=True)
-            examplesvi1 = examplesvi1.drop([A], axis=1)
-            root.right = makeDecisionTree(examplesvi1, method)
-        else:
-            root.left = node(True, None, None, None, 0)
-            examplesvi1 = vi1.copy(deep=True)
-            examplesvi1 = examplesvi1.drop([A], axis=1)
-            root.right = makeDecisionTree(examplesvi1, method)
-    elif vi0.shape[0]==0:
-        #count most common occurrence of Class
-        try:
-            vi0positive = ((vi0.groupby('Class').size())[1])
+            vi0positive = ((examples.groupby('Class').size())[1])
         except:
             vi0positive = 0
         try:
-            vi0negative = ((vi0.groupby('Class').size())[0])
+            vi0negative = ((examples.groupby('Class').size())[0])
         except:
             vi0negative = 0
         if vi0positive > vi0negative:
-            root.right = node(True, None, None, None, 1)
-            examplesvi0 = vi0.copy(deep=True)
-            examplesvi0 = examplesvi0.drop([A], axis=1)
-            root.left = makeDecisionTree(examplesvi0, method)
+            root.left= node(True, None, None, None, 1)
         else:
-            root.right = node(True, None, None, None, 0)
-            examplesvi0 = vi0.copy(deep=True)
-            examplesvi0 = examplesvi0.drop([A], axis=1)
-            root.left = makeDecisionTree(examplesvi0, method)
+            root.left= node(True, None, None, None, 0)
     else:
         examplesvi0 = vi0.copy(deep=True)
-        examplesvi1 = vi1.copy(deep=True)
         examplesvi0 = examplesvi0.drop([A], axis=1)
-        examplesvi1 = examplesvi1.drop([A], axis=1)
         root.left = makeDecisionTree(examplesvi0, method)
+
+    if vi1.shape[0]==0:
+        #count most common occurrence of Class
+        try:
+            vi1positive = ((examples.groupby('Class').size())[1])
+        except:
+            vi1positive = 0
+        try:
+            vi1negative = ((examples.groupby('Class').size())[0])
+        except:
+            vi1negative = 0
+        if vi1positive > vi1negative:
+            root.right= node(True, None, None, None, 1)
+        else:
+            root.right = node(True, None, None, None, 0)
+    else:
+        examplesvi1 = vi1.copy(deep=True)
+        examplesvi1 = examplesvi1.drop([A], axis=1)
         root.right = makeDecisionTree(examplesvi1, method)
     return root
     
 '''
 calculate best attribute by information gain
 Args: dataset
+Output: attribute name that has the best information gain
 '''
 def findAttributeByInformationGain(examples):
-    #calculate for full set S
-    numPositiveS = ((examples.groupby('Class').size())[1])
-    numNegativeS = ((examples.groupby('Class').size())[0])
+    #calculate number of positive and negative for full set S
+    
+    try:
+        numPositiveS = ((examples.groupby('Class').size())[1])
+    except:
+        numPositiveS = 0
+    try:
+        numNegativeS = ((examples.groupby('Class').size())[0])
+    except:
+        numNegativeS = 0
     entropyS = calculateEntropy(numPositiveS, numNegativeS)
     
     #store best attribute
@@ -169,13 +167,18 @@ def findAttributeByInformationGain(examples):
                 negative0 = 0
                 
             #calculate entropy
-            informationGain = entropyS - ((numPositive/total)*calculateEntropy(positive1, negative1)) - ((numNegative/total)*calculateEntropy(positive0, negative0))      
+            informationGain = entropyS - (((numPositive/total)*calculateEntropy(positive1, negative1)) + ((numNegative/total)*calculateEntropy(positive0, negative0)))
             #set the attribute to the best information gain
             if informationGain > bestInformationGain:
                 bestInformationGain = informationGain
                 bestAttribute = column
     return bestAttribute
-        
+    
+'''
+function to calculate the entropy
+Args: number of positive and negative examples
+Output: entropy as a float
+'''
 def calculateEntropy(numPositive, numNegative):
     total = numPositive + numNegative
     entropy = 0.0
@@ -186,8 +189,88 @@ def calculateEntropy(numPositive, numNegative):
     return entropy
 
 '''
+function to calculate best attribute by variance impurity
+Args: number of positive and negative examples
+Output: best attribute name
+'''
+def findAttributeByVariance(examples):
+    #calculate number of positive and negative for full set S
+    try:
+        numPositiveS = ((examples.groupby('Class').size())[1])
+    except:
+        numPositiveS = 0
+    try:
+        numNegativeS = ((examples.groupby('Class').size())[0])
+    except:
+        numNegativeS = 0
+    viS = calculateVarianceImpurity(numPositiveS, numNegativeS)
+    
+    #store best attribute
+    bestAttribute = None
+    bestVI = -0.1
+    for column in examples.columns:
+        #iterate over all attributes but class
+        if(column != "Class"):
+            try:
+                numPositive = (examples.groupby(column).size())[1]
+            except:
+                numPositive = 0
+            try:
+                numNegative = (examples.groupby(column).size())[0]
+            except:
+                numNegative = 0
+            total = numPositive + numNegative
+            
+            #subsets of the attribute that have 1 and 0 to calculate subset entropy
+            df1 = examples[(examples[column]==1)]
+            df0 = examples[(examples[column]==0)]
+            try:
+                positive1 = ((df1.groupby('Class').size())[1])
+            except:
+                #no positive examples in the 1 subclass
+                positive1 = 0
+            try:
+                negative1 = ((df1.groupby('Class').size())[0])
+            except:
+                #no negative examples in the 1 subclass
+                negative1 = 0
+            try:
+                #no positive examples in the 0 subclass
+                positive0 = ((df0.groupby('Class').size())[1])
+            except:
+                positive0 = 0
+            try:
+                #no negative examples in the 0 subclass
+                negative0 = ((df0.groupby('Class').size())[0])
+            except:
+                negative0 = 0
+                
+            #calculate gain
+            gain = viS - ((numPositive/total)*calculateVarianceImpurity(positive1,negative1) + ((numNegative/total)*calculateVarianceImpurity(positive0, negative0)))
+            #set the attribute to the best information gain
+            if gain > bestVI:
+                bestVI = gain
+                bestAttribute = column
+    return bestAttribute
+    
+    
+'''
+function to calculate the variance impurity
+Args: number of positive and negative examples
+Output: variance impurity as a float
+'''
+def calculateVarianceImpurity(numPositive, numNegative):
+    total = numPositive + numNegative
+    viS = 0.0
+    if numPositive == 0 or numNegative == 0:
+        return 0.0
+    viS = (numPositive/total)*(numNegative/total)
+    return viS
+
+'''
 function to print the tree in preorder
 Args: root to start the print, level of the tree
+Output: Prints the decision tree
 '''
 def printTree(root, level):
     if root:
@@ -222,5 +305,5 @@ if __name__ == "__main__":
     training_data = pandas.read_csv('training_set2.csv')
     training_attributes = list(training_data)
     training_values = training_data.values
-    root = makeDecisionTree(training_data, "ig")
+    root = makeDecisionTree(training_data, "vi")
     printTree(root, 0)
