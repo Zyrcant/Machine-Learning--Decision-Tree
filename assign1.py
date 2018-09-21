@@ -1,4 +1,19 @@
 # -*- coding: utf-8 -*-
+'''
+Written by Tiffany Do (tdd160030)
+CS 6375.003
+September 2018
+
+Description: 
+A program that creates a decision tree given binary attributes with binary classifications out of a training set.
+Uses supervised learning and the ID3 algorithm to generate tree and a greedy post-pruning algorithm to maximize accuracy given a validation set.
+Tests accuracy of pre-pruned tree and post-pruned tree given a test set given two heuristics: information gain and variance impurity.
+
+Arguments are given through command line:
+.\program <L> <K> <training-set> <validation-set> <test-set> <to-print>
+where L and K are integers used in the post-pruning algorithm
+'''
+
 import pandas
 from math import log
 import sys
