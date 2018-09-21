@@ -289,7 +289,7 @@ function to print the tree in preorder
 @param level:level of the tree (height it is currently at)
 @return: Prints the decision tree from the node in preorder
 '''
-def printTree(root, level):
+def printTree(root, level=0):
     if root:
         spaces = ""
         for i in range(level):
@@ -334,7 +334,6 @@ def postpruning(l, k, tree, validation):
             pruneNode.right = node(True, None, None, None, right, None)
         treeDAcc = calculateAccuracy(treeD, validation)
         if treeDAcc > bestAcc:
-            print("NEW TREE" + str(treeDAcc))
             bestTree = treeD
             bestAcc = treeDAcc
     return bestTree
@@ -366,8 +365,8 @@ def findMajority(node):
 
 '''
 Makes a list out of a tree in preorder
-@param tree: the tree to make a list out of
-@return: A LIST, MADE OUT OF A TREE
+@param tree: Node to start the list at
+@return: A list that has the tree starting from the node in preorder
 '''
 def makeTreeList(tree):
     #don't count leaves
@@ -403,18 +402,39 @@ def calculateAccuracy(tree, dataset):
     return (correct/total)
     
 if __name__ == "__main__": 
-    '''
-    L = sys.argv[1];
-    K = sys.argv[2]; 
+    #command line arguments
+    l = int(sys.argv[1]);
+    k = int(sys.argv[2]); 
     training = sys.argv[3]
     validate = sys.argv[4]
     test = sys.argv[5]
     to_print = sys.argv[6]
-    '''
-    training_data = pandas.read_csv('training_set2.csv')
-    validation_data = pandas.read_csv('validation_set2.csv')
-    test_data = pandas.read_csv('test_set2.csv')
-    root = makeDecisionTree(training_data, "ig")
-    print("prepruning: " + str(calculateAccuracy(root, test_data)))
-    newroot = postpruning(90, 10, root, validation_data)
-    print("postpruning: " + str(calculateAccuracy(newroot, test_data)))
+    
+    
+    training_data = pandas.read_csv(training)
+    validation_data = pandas.read_csv(validate)
+    test_data = pandas.read_csv(test)
+    
+    #copy training_data for variance impurity tree
+    training_data2 = copy.deepcopy(training_data)
+    
+    #make trees
+    infogainTree = makeDecisionTree(training_data, "ig")
+    viTree = makeDecisionTree(training_data2, "vi")
+    
+    print("Accuracy using information gain: " + str(calculateAccuracy(infogainTree, test_data)))
+    print("Accuracy using variance impurity: " + str(calculateAccuracy(viTree, test_data)))
+    newIG = postpruning(l, k, infogainTree, validation_data)
+    print("Postpruning accuracy of information gain: " + str(calculateAccuracy(newIG, test_data)))
+    newVI = postpruning(l, k, viTree, validation_data)
+    print("Postpruning accuracy of variance impurity: " + str(calculateAccuracy(newVI, test_data)))
+    
+    if(to_print == "yes"):
+        print("Tree using information gain:")
+        printTree(infogainTree)
+        print("\n\nTree using variance impurity:")
+        printTree(viTree)
+        print("\n\nPostpruned information gain tree:")
+        printTree(newIG)
+        print("\n\nPostpruned variance impurity tree:")
+        printTree(newVI)
